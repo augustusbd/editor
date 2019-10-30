@@ -6,15 +6,18 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
+import string_functions as s
+
 
 class ImageCropper:
-    def __init__(self, image, cropped_image=None):
-        self.initVariables(image)
-        self.crop_text = (f"Enter 'c' to save image, "
+    def __init__(self, image=None, cropped_image=None):
+        self.crop_text = (f"\tEnter 'c' to save image, "
                           f"'r' to redo crop selection, "
-                          f"'q' to quit cropping.")
+                          f"'q' to quit cropping.\n")
+        if image != None:
+            self.initVariables(image)
 
-        if cropped_image == None:
+        if image != None and cropped_image == None:
             self.await_crop_selection()
         else:
             self.initTemplateVariables(cropped_image)
@@ -31,14 +34,16 @@ class ImageCropper:
         self.clone = self.image.copy()
         self.shape = self.image.shape
 
-
     def initTemplateVariables(self, cropped_image):
+        self.directory = os.path.dirname(cropped_image)
+        self.template_name = os.path.basename(cropped_image)
+        self.ext = get_file_extension(self.template_name)
+
         self.template_path = cropped_image
         self.template = cv2.imread(self.template_path, 0)
         self.w, self.h = self.template.shape[::-1]
         self.uncropped_images = []
         self.images_to_compare = []
-
 
     # mouse callback function
     def shape_selection(self, event, x, y, flags, param):
@@ -136,7 +141,7 @@ class ImageCropper:
     def use_cropped_image_as_template(self):
         """Ask user if they would like to use this cropped image as template."""
         cv2.destroyAllWindows()
-        confirmed = ask_for_confirmation("Use cropped image as template? ")
+        confirmed = ask_for_confirmation("\tUse cropped image as template? ")
         if confirmed:
             self.crop_other_images()
         return None
@@ -159,7 +164,6 @@ class ImageCropper:
             self.recrop_template()
 
         return None
-
 
     def find_other_images_in_directory(self):
         """Sets"""
@@ -226,7 +230,7 @@ class ImageCropper:
     def recrop_template(self):
         """Reselect a template (and filter) for matching."""
         self.initVariables(self.uncropped_images[0])
-        text = f"Would you like to use a different filter for matching template? "
+        text = f"\tWould you like to use a different filter for matching template? "
         confirmed = ask_for_confirmation(text)
         if confirmed:
             self.reselect_crop_section()
@@ -306,6 +310,10 @@ class ImageCropper:
         for image in self.images_to_compare:
             self.template_matching_multiple_methods(image)
             print(self.methods_to_use)
+
+        # save self.methods_to_use to a file
+        if len(self.methods_to_use.keys()) > 0:
+        	self.template_match_known_methods()
         return None
 
     # match template using multiple methods 
@@ -325,6 +333,7 @@ class ImageCropper:
         for meth in methods:
             method = eval(meth)
             print(meth)
+            print("press any key to continue or 'c' to save image")
 
             # template matching
             res = cv2.matchTemplate(img_gray, self.template, method)
@@ -337,7 +346,7 @@ class ImageCropper:
             else:
                 top_left = max_loc
 
-            bottom_right = (top_left[0] + w, top_left[1] + h)
+            bottom_right = (top_left[0] + self.w, top_left[1] + self.h)
             cv2.rectangle(img_gray,top_left, bottom_right, 255, 2)
 
             plt.imshow(img_gray, cmap='gray')
@@ -345,10 +354,17 @@ class ImageCropper:
             plt.suptitle(meth)
             plt.show()
 
-            title = f"template match with method: {meth}"
+            title = f"template match with method: {meth}, press c to save!"
             cv2.namedWindow(title)
+            # show the cropped image instead of the whole image
+            # x1, y1 = top_left
+            # x2, y2 = bottom_right
+            # crop_img = self.clone[y1:y2, x1:x2]
+            # cv2.imshow(title, crop_img)
             cv2.imshow(title, img_gray)
             key = cv2.waitKey(0) & 0xFF
+            # if key == ord('c'): crop it and save it
+            #	save_image(crop_img)
             print(f"key has value: {key}")
             cv2.destroyAllWindows()
 
@@ -360,6 +376,17 @@ class ImageCropper:
 
         self.methods_to_use.update({image:methods_used})
         return None
+
+
+    def template_match_known_methods(self):
+    	# use template matching with know methods in self.methods_to_use
+    	# grab best result
+    	# 'cv2.TM_SQDIFF', 'cv2.TM_SQDIFF_NORMED' worked a bunch
+    	# maybe change the way template_matching_multiple_methods() works
+    	# 	like saving cropped images
+    	pass
+
+
 
     # wait 10 milliseconds for key input on loop
     def wait_for_key_input(self, image, *argv, title="crop_img"):
@@ -424,44 +451,6 @@ def template_matching_threshold(comparison_image, template, threshold=0.8):
         # save_image_('_cropped')
     return None
 
-def template_matching(comparison_image, template):
-    img = open_image(comparison_image)
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    w, h = template.shape[::-1]
-
-    #methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR',
-    #           'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF']
-    methods = ['cv2.TM_CCOEFF', 'cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR',
-            'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF', 'cv2.TM_SQDIFF_NORMED']
-
-    for meth in methods:
-        print(meth)
-        method = eval(meth)
-
-        # Apply template Matching
-        res = cv2.matchTemplate(img_gray,template,method)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-
-        # If the method is TM_SQDIFF or TM_SQDIFF_NORMED, take minimum
-        if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
-            top_left = min_loc
-
-        else:
-            top_left = max_loc
-
-        bottom_right = (top_left[0] + w, top_left[1] + h)
-        cv2.rectangle(img_gray,top_left, bottom_right, 255, 2)
-
-        #plt.imshow(img_gray, cmap='gray')
-        #plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
-
-        #plt.suptitle(meth)
-        #plt.show()
-        cv2.imshow('template match', img_gray)
-        key = cv2.waitKey(0) & 0xFF
-        cv2.destroyAllWindows()
-        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    return None
 
 def find_files_without_a_cropped_version(directory, ext):
     files = find_files(directory, ext)
@@ -491,20 +480,6 @@ def uncropped_filepath(directory, filename, files):
             return filepath
 
     return None
-
-# basically os.path.basename(file_path)
-def get_filename(file_path):
-    seperators = file_path.count(os.sep)
-    num_sep = 0 
-    if num_sep == seperators:
-        return file_path
-
-    file_list = list(file_path)
-    for index in range(len(file_list)):
-        if file_list[index] == os.sep:
-            num_sep += 1
-        if num_sep == seperators:
-            return file_path[index+1:]        # file name of path
 
 # inserts a string into a string
 def insert_string_before_extension(original, add_string):
@@ -537,83 +512,11 @@ def open_image(image):
     else:
         return cv2.imread(image)
 
-# mouse callback function
-def shape_selection(event, x, y, flags, param):
-    # grab references to global variables
-    global ref_point
-    blue = (255, 0, 0)
-    green = (0, 255, 0)
-
-    # if the left mouse button was clicked, record the starting
-    # (x, y) coordinates and indicate that cropping is being
-    # performed
-    if event == cv2.EVENT_LBUTTONDOWN:
-        ref_point = [(x, y)]
-        cv2.circle(param, (x,y), 5, blue, -1)
-        print(ref_point[0])
-
-    # check to see if the left mouse button was released
-    elif event == cv2.EVENT_LBUTTONUP:
-        # record the ending (x, y) coordinates and indicate that
-        # the cropping operation is finished
-        ref_point.append((x, y))
-        # draw a rectangle around the region of interest
-        cv2.rectangle(param, ref_point[0], ref_point[1], green, 2)
-        print(ref_point[1])
-
-def crop_image():
-    # load the image, clone it, and setup the mouse callback function
-    image = cv2.imread('./pics/Screenshot from 2019-10-26 02-49-37.png')
-    clone = image.copy()
-
-    cv2.namedWindow("image")
-    cv2.setMouseCallback("image", shape_selection, image)
-
-    # keep looping until the 'q' key is pressed
-    while True:
-        # display the image and wait for a keypress
-        cv2.imshow("image", image)
-        key = cv2.waitKey(20) & 0xFF 
-
-        # if the 'r' key is pressed, reset the cropping region
-        if key == ord("r"):
-            image = clone.copy()
-            cv2.setMouseCallback("image", shape_selection, image)
-
-        elif key == ord("q"):
-            break
-
-    # if there are two reference points, then crop the region of interest
-    # from teh image and display it
-    if len(ref_point) == 2:
-        print("cropping image")
-        crop_img = clone[ref_point[0][1]:ref_point[1][1], ref_point[0][0]:ref_point[1][0]]
-        cv2.imshow("crop_img", crop_img)
-        key = cv2.waitKey(0) & 0xFF
-
-        if key == ord('c'):
-            print("saving image")
-            cv2.imwrite('./pictures/saved_image.png', crop_img)
-
-    # close all open windows
-    cv2.destroyAllWindows()
-
-def crop_other_files(crop_img):
-    # go through directory and find files with same extension
-    # find the template that matches crop_img
-    # crop the template and save file
-    # repeat until no more images (that don't already have a crop)
-    pass
-
-def matching_images(crop_img, img):
-    # match the template of crop_img to img
-    pass
-
-directory = os.getcwd()
-def find_files(directory, ext, exclude_string=None):
+def find_files(directory, ext=None, exclude_string=None):
     """
     Find files inside directory with extension given.
     """
+    # directory = os.getcwd()
     files = []
     for folderName, subfolders, filenames in os.walk(directory):
         #print(f"The current folder is {folderName}")
@@ -635,14 +538,18 @@ def ask_for_confirmation(text):
     """Ask a user if they would like to do something or not. Returns True or False."""
     affirmative = ['yes','ya','ye','y','oui','si','mhm','mmhmm', '']
     answer = input(text)
+    print(f"\t\tanswer is: {answer}")
+    answer = s.remove_whitespace_at_either_end(answer)
     if answer.lower() in affirmative:
         return True
     else:
         return False
 
 
+def main():
+    pass
 
 if __name__ == '__main__':
-    crop()
+    main()
     sys.exit()
 

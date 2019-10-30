@@ -19,6 +19,7 @@ To Run:
 Arguments for 'editor.py' file:
 
 Image Cropping:
+	
 	-i, --image IMAGE: 
 		give a image path to make a crop selection from image.
 

@@ -195,7 +195,6 @@ class ImageCropper:
         # best match location
         top_left = max_loc
         bottom_right = (top_left[0] + self.w, top_left[1] + self.h)
-        cv2.rectangle(img_gray,top_left, bottom_right, 255, 2)
 
         x1, y1 = top_left
         x2, y2 = bottom_right
@@ -230,7 +229,7 @@ class ImageCropper:
     def recrop_template(self):
         """Reselect a template (and filter) for matching."""
         self.initVariables(self.uncropped_images[0])
-        text = f"\tWould you like to use a different filter for matching template? "
+        text = f"\tWould you like to use multiple filters for matching template? "
         confirmed = ask_for_confirmation(text)
         if confirmed:
             self.reselect_crop_section()
@@ -276,6 +275,7 @@ class ImageCropper:
     # multiple methods -template matching
     # wait for input to save image, or quit, or restart selection
     def await_input_to_save_image(self, image):
+        print("waiting for key input for recropped image")
         key = self.wait_for_key_input(image, 'c', 'q', 'r')
 
         # if the 'c' key is pressed, save the cropped image
@@ -305,24 +305,32 @@ class ImageCropper:
 
         # adds files to (self.images_to_compare) that don't have a cropped version
         self.find_other_images_in_directory()
-        self.methods_to_use = {}
+
         # template matching
         for image in self.images_to_compare:
             self.template_matching_multiple_methods(image)
-            print(self.methods_to_use)
 
-        # save self.methods_to_use to a file
-        if len(self.methods_to_use.keys()) > 0:
-        	self.template_match_known_methods()
+        # select another template to match with
+        if len(self.uncropped_images) > 0:
+            self.recrop_template()
+
         return None
 
     # match template using multiple methods 
-    def template_matching_multiple_methods(self, image):
+    def template_matching_multiple_methods(self, comparison_image):
+        """
+        Goes through multiple methods of template matching.
+        
+        If one of the methods provides a cropped image that is satisfactory,
+            save that cropped image.
+        else
+        """
         # reimplement template_matching()
         # go through different methods
         # select one method that satisfies the current template matching.
-        img = open_image(image)
+        img = open_image(comparison_image)
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        filename = os.path.basename(comparison_image)
 
         #methods = ['cv2.TM_CCOEFF_NORMED', 'cv2.TM_CCORR', 
         #             'cv2.TM_CCORR_NORMED', 'cv2.TM_SQDIFF']
@@ -333,7 +341,8 @@ class ImageCropper:
         for meth in methods:
             method = eval(meth)
             print(meth)
-            print("press any key to continue or 'c' to save image")
+            print("press 'c' to save image or 'q'/'r' to continue")
+            title = f"method: {meth}, press c to save!"
 
             # template matching
             res = cv2.matchTemplate(img_gray, self.template, method)
@@ -347,44 +356,35 @@ class ImageCropper:
                 top_left = max_loc
 
             bottom_right = (top_left[0] + self.w, top_left[1] + self.h)
-            cv2.rectangle(img_gray,top_left, bottom_right, 255, 2)
-
-            plt.imshow(img_gray, cmap='gray')
-            plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
-            plt.suptitle(meth)
-            plt.show()
-
-            title = f"template match with method: {meth}, press c to save!"
-            cv2.namedWindow(title)
-            # show the cropped image instead of the whole image
-            # x1, y1 = top_left
-            # x2, y2 = bottom_right
-            # crop_img = self.clone[y1:y2, x1:x2]
-            # cv2.imshow(title, crop_img)
-            cv2.imshow(title, img_gray)
-            key = cv2.waitKey(0) & 0xFF
-            # if key == ord('c'): crop it and save it
-            #	save_image(crop_img)
-            print(f"key has value: {key}")
+            x1, y1 = top_left
+            x2, y2 = bottom_right
+            crop_img = img[y1:y2, x1:x2]
+            
+            key = self.wait_for_key_input(crop_img, 'c', 'q', 'r', title=title)
             cv2.destroyAllWindows()
 
-            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            # user choose to save cropped image
+            if key == ord('c'):
+                # don't keep track of this file if the cropped image is satisfactory
+                methods_used = []
+                save_image_(self.directory, filename, '_cropped', crop_img)
+                break
 
-            confirmed = ask_for_confirmation(f"Does this method, {meth}, work? ")
-            if confirmed:
-                methods_used.append(meth)
-
-        self.methods_to_use.update({image:methods_used})
+        if key != ord('c'):
+            print(f"redo crop selection for {comparison_image}")
+            self.uncropped_images += [comparison_image]
+        
         return None
 
 
     def template_match_known_methods(self):
-    	# use template matching with know methods in self.methods_to_use
-    	# grab best result
-    	# 'cv2.TM_SQDIFF', 'cv2.TM_SQDIFF_NORMED' worked a bunch
-    	# maybe change the way template_matching_multiple_methods() works
-    	# 	like saving cropped images
-    	pass
+        # use template matching with know methods in self.methods_to_use
+        # grab best result
+        # 'cv2.TM_SQDIFF', 'cv2.TM_SQDIFF_NORMED' worked a bunch
+        # maybe change the way template_matching_multiple_methods() works
+        #     like saving cropped images
+        pass
+
 
 
 
@@ -392,6 +392,7 @@ class ImageCropper:
     def wait_for_key_input(self, image, *argv, title="crop_img"):
         """Return inputted key value."""
         print(self.crop_text)
+        cv2.namedWindow(title)
         while True:
             # display the image and wait for a keypress
             cv2.imshow(title, image)

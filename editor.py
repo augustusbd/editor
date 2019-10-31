@@ -6,6 +6,7 @@ import sys
 import argparse
 
 import image_cropper as ic
+import file_editor as fe
 import string_functions as s
 
 # construct the argument parser and parse the arguments
@@ -14,6 +15,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-i', '--image', nargs='*', help='image path for cropping')
 parser.add_argument('-ic', '--image_crop', nargs='*',
 					help='cropped image path to use as a template')
+parser.add_argument('-fe', '--file_edit', nargs='*',
+					help='path of file to be edited')
 #force_args = vars(parser.parse_args('-ic ./pics/Screenshot from 2019-10-26 02-49-37_cropped.png'))
 args = vars(parser.parse_args())
 
@@ -31,8 +34,9 @@ def main(arg_dict):
 		image = ic.ImageCropper(image, image_crop)
 
 	# other optional arguments will come later
-	else:
-		pass
+	elif args['file_edit'] != None:
+		file_path = s.put_strings_together(args['file_edit'])
+		file = fe.FileEdit(file_path)
 	
 	return None
 

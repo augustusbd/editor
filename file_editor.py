@@ -77,7 +77,7 @@ class FileHandler:
 
     def rename_files(self):
         folder_location = input("Enter file location of the files to rename: ")
-        files = f.find_files(folder_location)
+        files = find_files(folder_location)
         rename_template = input("Enter the way you want to rename the files: ")
         new_location = input("Enter the new location of file. '.' for current directory: ")
 
@@ -95,3 +95,41 @@ def rename_alphanumberical(files, new_name, new_location):
             add = str(x)
         filepath = os.path.join(new_location, new_name+add)
         shutil.move(files[x], filepath)
+
+
+
+
+def find_files(directory, ext=None, exclude_string=None):
+    """
+    Find files inside directory.
+        filter out files with extension and exlcuding string inside filename
+    """
+    # directory = os.getcwd()
+    files = []
+    for folderName, subfolders, filenames in os.walk(directory):
+        for filename in filenames:
+            
+            file = file_parameters(filename, ext, exclude_string)
+            if file != None:
+                filepath = os.path.join(folderName, file)
+                files.append(filepath)
+    return files
+
+def file_parameters(filename, extension=None, exclude_string=None):
+    """Returns a filename depending on the parameters."""
+    if extension and exclude_string:
+        if (exclude_string not in filename) and filename.endswith(ext):
+            return filename
+
+    elif extension and not exclude_string:
+        if filename.endswith(extension):
+            return filename
+
+    elif not extension and exclude_string:
+        if exclude_string not in filename:
+            return filename
+
+    else:
+        return filename
+
+    return None

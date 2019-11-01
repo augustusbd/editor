@@ -19,9 +19,17 @@ To Run:
 Arguments for 'editor.py' file:
 
 Image Cropping:
-	
+
 	-i, --image IMAGE: 
 		give a image path to make a crop selection from image.
 
 	-ic, --image_crop [IMAGE_CROP [IMAGE_CROP ...]]: 
 		give a cropped image path to use as a template
+
+
+Renaming Files:
+
+	-fe --file_edit FILE_EDIT:
+		give a string argument designating a type of file edit, options for now:
+			remove
+			rename

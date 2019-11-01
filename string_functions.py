@@ -109,3 +109,18 @@ def starts_or_ends_with_whitespace(text):
         elif text.endswith(x):
             return True
     return False
+
+
+# USER INPUT
+def user_input_choice(text, choices):
+    """Prints the choices and returns the choice inputted by user. Simple."""
+    print(f"\tHere are your options:")
+    for choice in choices:
+        print(f"\t\t{choice}")
+
+    user_input = input(text)
+    for choice in choices:
+        if user_input.lower() in choice:
+            return choice
+    print(f"Inputted value does not match one of the given choices.")
+    return None

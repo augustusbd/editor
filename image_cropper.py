@@ -14,11 +14,10 @@ class ImageCropper:
         self.crop_text = (f"\tEnter 'c' to save image, "
                           f"'r' to redo crop selection, "
                           f"'q' to quit cropping.\n")
-        if image != None:
+        if image and not cropped_image:
             self.initVariables(image)
+            self.cropping_image()
 
-        if image != None and cropped_image == None:
-            self.await_crop_selection()
         else:
             self.initTemplateVariables(cropped_image)
             self.use_cropped_image_as_template()
@@ -63,7 +62,12 @@ class ImageCropper:
             self.ref_point.append((x, y))
             # draw a rectangle around the region of interest
             cv2.rectangle(param, self.ref_point[0], self.ref_point[1], green, 2)
-            
+    
+
+    def cropping_image(self)
+        self.await_crop_selection()
+
+
     # use mouse to make a section for cropping
     def await_crop_selection(self):
         print(f"select area for cropping")
@@ -85,20 +89,20 @@ class ImageCropper:
             # if the 'c' key is pressed, copy the crop selection
             elif key == ord("c"):
                 self.image = self.clone.copy()
-                if self.copy_crop_section() != None:
+                if self.image_cropped():
                     self.await_save_image(self.cropped_image)
                 break
 
             # if the 'q' key is pressed, don't crop image and exit
             elif key == ord("q"):
-                cv2.destroyAllWindows()
                 print("quitting crop selection")
+                cv2.destroyAllWindows()
                 break
 
         return None
 
     # copy the section outlined by user
-    def copy_crop_section(self):
+    def image_cropped(self):
         """Crop the region of interest."""
         print("copying crop selection")
         # if there are two reference points, then crop the region of interest
@@ -117,7 +121,7 @@ class ImageCropper:
 
     # wait for input key to save image (or not), or to restart
     def await_save_image(self, image):
-        key = self.wait_for_key_input(image, 'c', 'q', 'r')
+        key = self.wait_for_key_input(image, ['c', 'q', 'r'])
         
         # if the 'c' key is pressed, save the cropped image
         if key == ord('c'):
@@ -141,7 +145,7 @@ class ImageCropper:
     def use_cropped_image_as_template(self):
         """Ask user if they would like to use this cropped image as template."""
         cv2.destroyAllWindows()
-        confirmed = ask_for_confirmation("\tUse cropped image as template? ")
+        confirmed = ask_for_confirmation("\tUse cropped image as a template? ")
         if confirmed:
             self.crop_other_images()
         return None
@@ -160,7 +164,7 @@ class ImageCropper:
             self.match_template(image)
         
         # UNCROPPED FILES - Reselect Template
-        if len(self.uncropped_images) > 0:
+        if self.uncropped_images:
             self.recrop_template()
 
         return None
@@ -176,7 +180,7 @@ class ImageCropper:
             for filename in filenames:
                 # if filename does not have 'cropped' version, get filepath
                 path = uncropped_filepath(self.directory, filename, files)
-                if path != None:
+                if path:
                     new_files += [path]
         self.images_to_compare = new_files
         return None
@@ -205,7 +209,7 @@ class ImageCropper:
 
     # wait for key input for new cropped image
     def await_template_save_image(self, image):
-        key = self.wait_for_key_input(image, 'c', 'q', 'r')
+        key = self.wait_for_key_input(image, ['c', 'q', 'r'])
 
         # if the 'c' key is pressed, save the cropped image
         if key == ord('c'):
@@ -254,7 +258,7 @@ class ImageCropper:
             # if the 'c' key is pressed, copy the crop selection
             if key == ord('c'):
                 self.image = self.clone.copy()
-                if self.copy_crop_section() != None:
+                if self.image_cropped():
                     self.await_input_to_save_image(self.cropped_image)
                 break
 
@@ -276,25 +280,25 @@ class ImageCropper:
     # wait for input to save image, or quit, or restart selection
     def await_input_to_save_image(self, image):
         print("waiting for key input for recropped image")
-        key = self.wait_for_key_input(image, 'c', 'q', 'r')
+        key = self.wait_for_key_input(image, ['c', 'q', 'r'])
 
         # if the 'c' key is pressed, save the cropped image
         if key == ord('c'):
+            cv2.destroyAllWindows()
             print("saving recropped image")
             self.template_path = save_image_(self.directory, self.filename, '_cropped', image)
-            cv2.destroyAllWindows()
             self.recrop_other_images()
 
         # if the 'q' key is pressed, don't save cropped image
         elif key == ord('q'):
             print("quitting recrop selection save")
+            cv2.destroyAllWindows()
 
         # if the 'r' key is pressed, restart the crop selection
         elif key == ord('r'):
             print("restarting recrop selection")
             self.reselect_crop_section()
         
-        cv2.destroyAllWindows()
         return None
 
     # crop other images in directory with new template
@@ -311,7 +315,7 @@ class ImageCropper:
             self.template_matching_multiple_methods(image)
 
         # select another template to match with
-        if len(self.uncropped_images) > 0:
+        if self.uncropped_images:
             self.recrop_template()
 
         return None
@@ -360,7 +364,7 @@ class ImageCropper:
             x2, y2 = bottom_right
             crop_img = img[y1:y2, x1:x2]
             
-            key = self.wait_for_key_input(crop_img, 'c', 'q', 'r', title=title)
+            key = self.wait_for_key_input(crop_img, ['c', 'q', 'r'], title=title)
             cv2.destroyAllWindows()
 
             # user choose to save cropped image
@@ -386,10 +390,8 @@ class ImageCropper:
         pass
 
 
-
-
     # wait 10 milliseconds for key input on loop
-    def wait_for_key_input(self, image, *argv, title="crop_img"):
+    def wait_for_key_input(self, image, args, title="crop_img"):
         """Return inputted key value."""
         print(self.crop_text)
         cv2.namedWindow(title)
@@ -398,7 +400,7 @@ class ImageCropper:
             cv2.imshow(title, image)
             key = cv2.waitKey(10) & 0xFF
 
-            for arg in argv:
+            for arg in args:
                 if key == ord(arg):
                     return key
         return None
@@ -462,7 +464,7 @@ def find_files_without_a_cropped_version(directory, ext):
             # returns a file without a cropped image version; otherwise None
             path = uncropped_filepath(directory, filename, files)
             # the path contains a file without a cropped version in directory
-            if path != None:
+            if path:
                 new_files += [path]
 
     return new_files

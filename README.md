@@ -9,11 +9,12 @@ In the future, Editor will go through correcting mistakes in notes and logging t
 
 To Run:
 
+        Image Cropping
 	$ python editor.py -i image_location
+	$ python editor.py --image image_location 
 
-	or
-
-	$ python editor.py -i 'image_location'
+        File Editor
+	$ python editor.py -fe rename
 
 
 Arguments for 'editor.py' file:
@@ -21,15 +22,16 @@ Arguments for 'editor.py' file:
 Image Cropping:
 
 	-i, --image IMAGE: 
-		give a image path to make a crop selection from image.
+		give a path to a image, to make a crop selection from image.
 
 	-ic, --image_crop [IMAGE_CROP [IMAGE_CROP ...]]: 
-		give a cropped image path to use as a template
+		give a path to a cropped image, to use as a template
 
 
-Renaming Files:
+Editing Files:
 
-	-fe --file_edit FILE_EDIT:
-		give a string argument designating a type of file edit, options for now:
-			remove
-			rename
+	-fe, --edit_file FILE_EDIT:
+		give an argument to do one of the following (options for now):
+			rename  - rename files
+			
+

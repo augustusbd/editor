@@ -75,7 +75,7 @@ def has_non_space_whitespace(text):
 
 def remove_non_space_whitespace(text):
     """Takes out whitespace that isn't a space ' '."""
-    whitespace = ['\n','\t','\r','\x0b','\x0c']
+    whitespace = ['\n','\t','\r','\x0b','\x0c','\xa0']
     if type(text) != str:
         print("Argument is not a string.")    
     else:
